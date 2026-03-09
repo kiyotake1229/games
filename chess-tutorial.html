@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チェス チュートリアル</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b0f1a;
+      --surface:   #131929;
+      --surface2:  #1a2236;
+      --border:    rgba(255,255,255,0.07);
+      --txt:       #e2e8f0;
+      --txt-dim:   #64748b;
+      --sq-light:  #f0d9b5;
+      --sq-dark:   #b58863;
+      --accent:    #c9a032;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: 'Noto Sans JP', 'Segoe UI', sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 60px;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(120,80,20,0.14), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(60,40,10,0.1), transparent);
+    }
+
+    /* ---- Nav ---- */
+    #nav {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nav-link {
+      font-size: 0.78rem;
+      color: var(--txt-dim);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      padding: 5px 14px;
+      border-radius: 6px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .nav-link:hover { color: var(--txt); border-color: rgba(255,255,255,0.18); }
+
+    /* ---- Title ---- */
+    #title-wrap { text-align: center; margin-bottom: 24px; }
+    h1 {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      background: linear-gradient(135deg, #e2e8f0, #94a3b8 50%, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #title-sub {
+      font-size: 0.68rem;
+      letter-spacing: 0.3em;
+      color: var(--txt-dim);
+      margin-top: 4px;
+      text-transform: uppercase;
+    }
+
+    /* ---- Progress dots ---- */
+    #progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    .dot.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 8px rgba(201,160,50,0.6);
+      transform: scale(1.3);
+    }
+    .dot.done {
+      background: rgba(201,160,50,0.4);
+      border-color: rgba(201,160,50,0.35);
+    }
+    #step-counter {
+      font-size: 0.7rem;
+      color: var(--txt-dim);
+      letter-spacing: 0.08em;
+      margin-left: 8px;
+    }
+
+    /* ---- Step card ---- */
+    #step-card {
+      width: 100%;
+      max-width: 600px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      margin-bottom: 20px;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #step-card.fade-out { opacity: 0; transform: translateX(-16px); }
+    #step-card.fade-in  { opacity: 0; transform: translateX(16px); }
+
+    #step-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--txt);
+      margin-bottom: 10px;
+      letter-spacing: 0.04em;
+    }
+    #step-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.75;
+      margin-bottom: 22px;
+    }
+
+    /* ---- Board area ---- */
+    #board-wrap {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      grid-template-rows: 1fr 18px;
+      gap: 3px;
+      margin-bottom: 0;
+      width: fit-content;
+      margin: 0 auto;
+    }
+
+    .coord-labels { display: flex; }
+    #col-labels {
+      grid-column: 2; grid-row: 2;
+      justify-content: space-around;
+      padding: 0 7px;
+    }
+    #row-labels {
+      grid-column: 1; grid-row: 1;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 7px 0;
+    }
+    .coord-labels span {
+      font-size: 0.56rem;
+      color: #3d5066;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+    }
+
+    #board-frame {
+      grid-column: 2; grid-row: 1;
+      background: linear-gradient(135deg, #7a5520 0%, #4e3510 25%, #6b4818 50%, #4a3010 75%, #7a5520 100%);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(201,161,50,0.25), 0 0 0 2px rgba(40,25,5,0.9), 0 28px 70px rgba(0,0,0,0.75);
+    }
+
+    #board-inner { background: #2a1a08; border-radius: 3px; padding: 3px; }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 0;
+    }
+
+    .sq {
+      width: 54px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      font-size: 2.2rem;
+      line-height: 1;
+      user-select: none;
+    }
+    .sq.light { background: var(--sq-light); }
+    .sq.dark  { background: var(--sq-dark); }
+    .sq.in-check { background: rgba(220,40,40,0.78) !important; }
+    .sq.castle-dest { background: rgba(59,130,246,0.45) !important; }
+
+    /* Move hint dot */
+    .sq.hint-move::after {
+      content: '';
+      position: absolute;
+      width: 30%;
+      height: 30%;
+      background: rgba(0,180,0,0.55);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Capture hint ring */
+    .sq.hint-cap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, transparent 60%, rgba(0,180,0,0.55) 62%, rgba(0,180,0,0.55) 100%);
+      pointer-events: none;
+    }
+
+    /* Piece */
+    .piece {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+    }
+    .piece.w {
+      color: #ffffff;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6)) drop-shadow(0 0 1px rgba(0,0,0,0.9));
+    }
+    .piece.b {
+      color: #1a1008;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.7)) drop-shadow(0 0 1px rgba(100,70,20,0.4));
+    }
+
+    /* ---- Promotion icons (step 9) ---- */
+    #promo-icons {
+      display: none;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    #promo-icons.show { display: flex; }
+    .promo-icon {
+      width: 64px;
+      height: 64px;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      background: var(--surface2);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .promo-icon span:first-child {
+      font-size: 2rem;
+      color: #fff;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6));
+    }
+    .promo-icon span:last-child {
+      font-size: 0.5rem;
+      color: var(--txt-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ---- Navigation buttons ---- */
+    #nav-buttons {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 600px;
+      justify-content: center;
+    }
+    .nav-btn {
+      padding: 11px 32px;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--txt);
+      font-size: 0.9rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: all 0.18s;
+      min-width: 100px;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: #1e2a3a;
+      border-color: rgba(255,255,255,0.22);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .nav-btn.primary {
+      background: linear-gradient(135deg, rgba(201,160,50,0.25), rgba(201,160,50,0.15));
+      border-color: rgba(201,160,50,0.4);
+      color: #f0c060;
+    }
+    .nav-btn.primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(201,160,50,0.35), rgba(201,160,50,0.22));
+      border-color: rgba(201,160,50,0.65);
+    }
+
+    /* ---- Play button (step 12) ---- */
+    #play-btn-wrap {
+      display: none;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    #play-btn-wrap.show { display: flex; }
+    #play-btn {
+      display: inline-block;
+      padding: 16px 48px;
+      background: linear-gradient(135deg, #c9a032, #a07020);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 900;
+      text-decoration: none;
+      border-radius: 12px;
+      letter-spacing: 0.08em;
+      box-shadow: 0 6px 24px rgba(201,160,50,0.4);
+      transition: all 0.2s;
+    }
+    #play-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(201,160,50,0.55);
+    }
+
+    @media (max-width: 560px) {
+      .sq { width: 40px; height: 40px; }
+      .piece { font-size: 1.65rem; }
+      #step-card { padding: 20px 16px 18px; }
+      .nav-btn { padding: 10px 20px; font-size: 0.82rem; min-width: 80px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top nav -->
+  <div id="nav">
+    <a class="nav-link" href="chess.html">← チェスに戻る</a>
+    <a class="nav-link" href="othello-tutorial.html">← オセロのルールを学ぶ</a>
+  </div>
+
+  <!-- Title -->
+  <div id="title-wrap">
+    <h1>CHESS TUTORIAL</h1>
+    <div id="title-sub">チェスのルールをステップで学ぼう</div>
+  </div>
+
+  <!-- Progress dots -->
+  <div id="progress-wrap">
+    <!-- dots injected by JS -->
+    <div id="step-counter"></div>
+  </div>
+
+  <!-- Step card -->
+  <div id="step-card">
+    <div id="step-title"></div>
+    <div id="step-desc"></div>
+
+    <!-- Board -->
+    <div id="board-wrap">
+      <div class="coord-labels" id="row-labels">
+        <span>8</span><span>7</span><span>6</span><span>5</span>
+        <span>4</span><span>3</span><span>2</span><span>1</span>
+      </div>
+      <div id="board-frame">
+        <div id="board-inner">
+          <div id="board"></div>
+        </div>
+      </div>
+      <div style="grid-column:1;grid-row:2;"></div>
+      <div class="coord-labels" id="col-labels">
+        <span>a</span><span>b</span><span>c</span><span>d</span>
+        <span>e</span><span>f</span><span>g</span><span>h</span>
+      </div>
+    </div>
+
+    <!-- Promotion icons (step 9) -->
+    <div id="promo-icons">
+      <div class="promo-icon"><span>♕</span><span>クイーン</span></div>
+      <div class="promo-icon"><span>♖</span><span>ルーク</span></div>
+      <div class="promo-icon"><span>♗</span><span>ビショップ</span></div>
+      <div class="promo-icon"><span>♘</span><span>ナイト</span></div>
+    </div>
+
+    <!-- Play button (step 12) -->
+    <div id="play-btn-wrap">
+      <a id="play-btn" href="chess.html">チェスを始める →</a>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div id="nav-buttons">
+    <button class="nav-btn" id="btn-prev">前へ</button>
+    <button class="nav-btn primary" id="btn-next">次へ</button>
+  </div>
+
+<script>
+  // ============================================================
+  // Constants
+  // ============================================================
+  const EMPTY = 0;
+  const WP=1, WN=2, WB=3, WR=4, WQ=5, WK=6;
+  const BP=-1, BN=-2, BB=-3, BR=-4, BQ=-5, BK=-6;
+
+  const GLYPH = {
+    1:'♙', 2:'♘', 3:'♗', 4:'♖', 5:'♕', 6:'♔',
+   -1:'♟',-2:'♞',-3:'♝',-4:'♜',-5:'♛',-6:'♚'
+  };
+
+  const INIT_BOARD = [
+    BR,BN,BB,BQ,BK,BB,BN,BR,
+    BP,BP,BP,BP,BP,BP,BP,BP,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,
+    WP,WP,WP,WP,WP,WP,WP,WP,
+    WR,WN,WB,WQ,WK,WB,WN,WR
+  ];
+
+  const row = s => s >> 3;
+  const col = s => s & 7;
+  const sq  = (r, c) => r * 8 + c;
+
+  // ============================================================
+  // Steps definition
+  // ============================================================
+  function makeEmpty() { return new Array(64).fill(0); }
+
+  const STEPS = [
+
+    // Step 1: Welcome
+    {
+      title: 'ようこそ、チェスへ！',
+      desc: 'チェスの目的は相手のキングを詰み（チェックメイト）にすること。白が先手です。各駒には固有の動き方があります。',
+      board: [...INIT_BOARD],
+      moveSquares: [],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 2: Pawn
+    {
+      title: 'ポーン (歩兵)',
+      desc: '前に1マス進めます（初回は2マスも可）。斜め前の相手の駒だけ取れます。',
+      board: (() => {
+        const b = makeEmpty();
+        b[52] = WP;  // e2
+        b[43] = BP;  // d3
+        b[45] = BP;  // f3
+        return b;
+      })(),
+      moveSquares: [44, 36],       // e3, e4
+      captureSquares: [43, 45],   // d3, f3
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 3: Knight
+    {
+      title: 'ナイト (騎士)',
+      desc: 'L字型に動きます。他の駒を飛び越えられる唯一の駒です！',
+      board: (() => {
+        const b = makeEmpty();
+        b[35] = WN;  // d4
+        return b;
+      })(),
+      moveSquares: [18, 20, 25, 29, 41, 45, 50, 52],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 4: Bishop
+    {
+      title: 'ビショップ (司教)',
+      desc: '斜め方向に何マスでも動けます。常に同じ色のマスを通ります。',
+      board: (() => {
+        const b = makeEmpty();
+        b[35] = WB;  // d4
+        return b;
+      })(),
+      moveSquares: [26, 17, 8, 28, 21, 14, 7, 44, 53, 62, 42, 49, 56],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 5: Rook
+    {
+      title: 'ルーク (城)',
+      desc: '縦・横方向に何マスでも動けます。強力な駒です。',
+      board: (() => {
+        const b = makeEmpty();
+        b[35] = WR;  // d4
+        return b;
+      })(),
+      moveSquares: [27, 19, 11, 3, 43, 51, 59, 32, 33, 34, 36, 37, 38, 39],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 6: Queen
+    {
+      title: 'クイーン (女王)',
+      desc: '縦・横・斜めすべての方向に何マスでも動けます。最も強力な駒！',
+      board: (() => {
+        const b = makeEmpty();
+        b[35] = WQ;  // d4
+        return b;
+      })(),
+      // union of bishop (26,17,8,28,21,14,7,44,53,62,42,49,56) and rook (27,19,11,3,43,51,59,32,33,34,36,37,38,39)
+      moveSquares: [26,17,8, 28,21,14,7, 44,53,62, 42,49,56, 27,19,11,3, 43,51,59, 32,33,34, 36,37,38,39],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 7: King
+    {
+      title: 'キング (王)',
+      desc: 'すべての方向に1マスだけ動けます。キングを守ることが最重要です！',
+      board: (() => {
+        const b = makeEmpty();
+        b[60] = WK;  // e1
+        return b;
+      })(),
+      moveSquares: [51, 52, 53, 59, 61],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 8: Castling
+    {
+      title: 'キャスリング (特殊移動)',
+      desc: 'キングが2マス動き、ルークが飛び越えます。条件：両駒が未移動・間に駒なし・チェックを通過しない。',
+      board: (() => {
+        const b = makeEmpty();
+        b[60] = WK;  // e1
+        b[56] = WR;  // a1
+        b[63] = WR;  // h1
+        return b;
+      })(),
+      moveSquares: [],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [62, 61, 58, 59],  // king→g1, rook→f1, king→c1, rook→d1
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 9: Promotion
+    {
+      title: 'ポーンの成り (プロモーション)',
+      desc: 'ポーンが相手陣地の最終ランクに到達すると、クイーン・ルーク・ビショップ・ナイトに成れます。通常はクイーンを選びます。',
+      board: (() => {
+        const b = makeEmpty();
+        b[12] = WP;  // e7
+        b[7]  = BK;  // h8
+        return b;
+      })(),
+      moveSquares: [4],   // e8
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: true,
+      showPlayBtn: false,
+    },
+
+    // Step 10: En passant
+    {
+      title: 'アンパッサン',
+      desc: '相手のポーンが初回に2マス進んで隣に来た場合、すぐ次のターンだけ斜めに取れます（アンパッサン）。',
+      board: (() => {
+        const b = makeEmpty();
+        b[28] = WP;  // e5
+        b[27] = BP;  // d5
+        return b;
+      })(),
+      moveSquares: [],
+      captureSquares: [19],  // d6 — en passant capture target
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 11: Check and Checkmate
+    {
+      title: 'チェックとチェックメイト',
+      desc: 'キングが攻撃されている状態を「チェック」、逃げられない状態を「チェックメイト」といいます。これで相手の勝ちです！',
+      board: (() => {
+        const b = makeEmpty();
+        b[0]  = WR;  // a8 — gives check
+        b[7]  = BK;  // h8 — black king
+        b[14] = BP;  // g7 — blocking
+        b[15] = BP;  // h7 — blocking
+        b[22] = WQ;  // g6 — attacks g7,g8,h7,h6
+        return b;
+      })(),
+      moveSquares: [],
+      captureSquares: [],
+      checkSquare: 7,   // black king is in check
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: false,
+    },
+
+    // Step 12: Let's play!
+    {
+      title: 'さあプレイしよう！',
+      desc: 'すべてのルールを学びました！実際に対戦してみましょう。',
+      board: [...INIT_BOARD],
+      moveSquares: [],
+      captureSquares: [],
+      checkSquare: -1,
+      castleSquares: [],
+      showPromo: false,
+      showPlayBtn: true,
+    },
+  ];
+
+  // ============================================================
+  // State
+  // ============================================================
+  let currentStep = 0;
+  const TOTAL = STEPS.length;
+
+  // ============================================================
+  // Build progress dots
+  // ============================================================
+  const progressWrap = document.getElementById('progress-wrap');
+  const stepCounter  = document.getElementById('step-counter');
+
+  for (let i = 0; i < TOTAL; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.title = `ステップ ${i + 1}`;
+    dot.addEventListener('click', () => goToStep(i));
+    progressWrap.insertBefore(dot, stepCounter);
+  }
+
+  function updateDots() {
+    const dots = progressWrap.querySelectorAll('.dot');
+    dots.forEach((d, i) => {
+      d.classList.toggle('active', i === currentStep);
+      d.classList.toggle('done', i < currentStep);
+    });
+    stepCounter.textContent = `${currentStep + 1} / ${TOTAL}`;
+  }
+
+  // ============================================================
+  // Render board
+  // ============================================================
+  function renderBoard(step) {
+    const { board, moveSquares, captureSquares, checkSquare, castleSquares } = step;
+    const moveSet    = new Set(moveSquares);
+    const capSet     = new Set(captureSquares);
+    const castleSet  = new Set(castleSquares);
+    const boardEl    = document.getElementById('board');
+
+    boardEl.innerHTML = '';
+
+    for (let s = 0; s < 64; s++) {
+      const r = row(s), c = col(s);
+      const isLight = (r + c) % 2 === 0;
+      const cell = document.createElement('div');
+      cell.className = 'sq ' + (isLight ? 'light' : 'dark');
+
+      if (s === checkSquare) {
+        cell.classList.add('in-check');
+      } else if (castleSet.has(s)) {
+        cell.classList.add('castle-dest');
+      }
+
+      if (capSet.has(s)) {
+        cell.classList.add('hint-cap');
+      } else if (moveSet.has(s)) {
+        cell.classList.add('hint-move');
+      }
+
+      const p = board[s];
+      if (p !== EMPTY) {
+        const piece = document.createElement('div');
+        piece.className = 'piece ' + (p > 0 ? 'w' : 'b');
+        piece.textContent = GLYPH[p] || '?';
+        cell.appendChild(piece);
+      }
+
+      boardEl.appendChild(cell);
+    }
+  }
+
+  // ============================================================
+  // Render step
+  // ============================================================
+  function renderStep(idx, direction) {
+    const step = STEPS[idx];
+    const card = document.getElementById('step-card');
+
+    // Animate out
+    card.classList.add(direction === 1 ? 'fade-out' : 'fade-in');
+
+    setTimeout(() => {
+      document.getElementById('step-title').textContent = step.title;
+      document.getElementById('step-desc').textContent  = step.desc;
+      renderBoard(step);
+
+      const promoEl   = document.getElementById('promo-icons');
+      const playBtnEl = document.getElementById('play-btn-wrap');
+      promoEl.classList.toggle('show', !!step.showPromo);
+      playBtnEl.classList.toggle('show', !!step.showPlayBtn);
+
+      // Animate in
+      card.classList.remove('fade-out', 'fade-in');
+      card.style.opacity = '0';
+      card.style.transform = direction === 1 ? 'translateX(16px)' : 'translateX(-16px)';
+      card.offsetHeight; // reflow
+      card.style.transition = 'opacity 0.25s, transform 0.25s';
+      card.style.opacity = '1';
+      card.style.transform = 'translateX(0)';
+
+      setTimeout(() => { card.style.transition = ''; }, 280);
+    }, 200);
+  }
+
+  function goToStep(idx, direction) {
+    if (idx < 0 || idx >= TOTAL) return;
+    const dir = direction !== undefined ? direction : (idx > currentStep ? 1 : -1);
+    currentStep = idx;
+    renderStep(currentStep, dir);
+    updateDots();
+    updateButtons();
+  }
+
+  function updateButtons() {
+    document.getElementById('btn-prev').disabled = currentStep === 0;
+    const nextBtn = document.getElementById('btn-next');
+    if (currentStep === TOTAL - 1) {
+      nextBtn.textContent = '最初から';
+    } else {
+      nextBtn.textContent = '次へ';
+    }
+  }
+
+  // ============================================================
+  // Button events
+  // ============================================================
+  document.getElementById('btn-prev').addEventListener('click', () => {
+    if (currentStep > 0) goToStep(currentStep - 1, -1);
+  });
+
+  document.getElementById('btn-next').addEventListener('click', () => {
+    if (currentStep < TOTAL - 1) {
+      goToStep(currentStep + 1, 1);
+    } else {
+      goToStep(0, 1);
+    }
+  });
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      if (currentStep < TOTAL - 1) goToStep(currentStep + 1, 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      if (currentStep > 0) goToStep(currentStep - 1, -1);
+    }
+  });
+
+  // ============================================================
+  // Init
+  // ============================================================
+  updateDots();
+  renderStep(0, 1);
+  updateButtons();
+</script>
+</body>
+</html>
