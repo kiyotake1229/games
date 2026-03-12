@@ -83,8 +83,9 @@
       transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
     }
 
-    .game-card.othello:hover { transform: translateY(-7px); border-color: rgba(34,197,94,0.3); box-shadow: 0 24px 64px rgba(22,163,74,0.13), 0 8px 20px rgba(0,0,0,0.4); }
-    .game-card.chess:hover   { transform: translateY(-7px); border-color: rgba(251,191,36,0.25); box-shadow: 0 24px 64px rgba(180,83,9,0.12), 0 8px 20px rgba(0,0,0,0.4); }
+    .game-card.othello:hover { transform: translateY(-7px); border-color: rgba(34,197,94,0.3);   box-shadow: 0 24px 64px rgba(22,163,74,0.13),  0 8px 20px rgba(0,0,0,0.4); }
+    .game-card.chess:hover   { transform: translateY(-7px); border-color: rgba(251,191,36,0.25); box-shadow: 0 24px 64px rgba(180,83,9,0.12),   0 8px 20px rgba(0,0,0,0.4); }
+    .game-card.shogi:hover   { transform: translateY(-7px); border-color: rgba(124,58,237,0.3);  box-shadow: 0 24px 64px rgba(124,58,237,0.12), 0 8px 20px rgba(0,0,0,0.4); }
 
     /* ---- Board previews ---- */
     .board-preview {
@@ -123,6 +124,28 @@
     .o-disc.b { background: radial-gradient(circle at 35% 30%, rgba(120,120,120,0.4) 0%, transparent 42%, #111 100%); box-shadow: inset 0 1px 3px rgba(255,255,255,0.15), 0 2px 6px rgba(0,0,0,0.6); }
     .o-disc.w { background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.9) 0%, transparent 45%, #ccc 100%); box-shadow: inset 0 1px 3px rgba(255,255,255,0.9), 0 2px 6px rgba(0,0,0,0.4); }
 
+    /* Shogi mini board */
+    .s-inner {
+      width: 100%; height: 100%;
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 1px;
+      background: rgba(0,0,0,0.3);
+      padding: 1px;
+    }
+    .s-sq { background: #c8a96e; display: flex; align-items: center; justify-content: center; }
+    .s-piece {
+      width: 88%; height: 88%;
+      clip-path: polygon(50% 0%, 95% 20%, 95% 100%, 5% 100%, 5% 20%);
+      background: #f5e6c8;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.55rem; font-weight: 900;
+      color: #1a0a00; font-family: serif;
+    }
+    .s-piece.gote { transform: rotate(180deg); background: #e8d5b0; }
+    .s-piece.promoted { color: #c0392b; }
+
     /* Chess mini board */
     .c-inner {
       width: 100%; height: 100%;
@@ -153,8 +176,9 @@
       width: fit-content;
     }
 
-    .othello-badge { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.28); }
+    .othello-badge { background: rgba(34,197,94,0.12);  color: #86efac; border: 1px solid rgba(34,197,94,0.28); }
     .chess-badge   { background: rgba(251,191,36,0.1);  color: #fde68a; border: 1px solid rgba(251,191,36,0.25); }
+    .shogi-badge   { background: rgba(124,58,237,0.12); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.28); }
 
     .game-title { font-size: 1.65rem; font-weight: 900; letter-spacing: 0.12em; margin-bottom: 8px; }
     .game-desc  { font-size: 0.8rem; color: var(--dim); line-height: 1.75; margin-bottom: 22px; flex: 1; }
@@ -173,6 +197,7 @@
 
     .othello-play { background: linear-gradient(135deg,#16a34a,#15803d); color:#fff; box-shadow:0 4px 14px rgba(22,163,74,0.3); }
     .chess-play   { background: linear-gradient(135deg,#b45309,#92400e); color:#fff; box-shadow:0 4px 14px rgba(180,83,9,0.3); }
+    .shogi-play   { background: linear-gradient(135deg,#7c3aed,#5b21b6); color:#fff; box-shadow:0 4px 14px rgba(124,58,237,0.3); }
 
     .btn-rule {
       padding: 11px 16px; border: 1px solid var(--border); border-radius: 10px;
@@ -223,6 +248,23 @@
       </div>
     </div>
 
+    <!-- Shogi -->
+    <div class="game-card shogi">
+      <div class="board-preview" style="background:radial-gradient(ellipse at 50% 60%,#3b1f6a,#1a0d30);">
+        <div class="board-frame">
+          <div class="s-inner" id="shogi-mini"></div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="game-badge shogi-badge">Japanese Classic</div>
+        <div class="game-title">将棋</div>
+        <p class="game-desc">取った駒を自分の駒として使える日本の伝統ゲーム。チェスより奥深い戦略が楽しめる。</p>
+        <div class="card-actions">
+          <a href="shogi.html" class="btn-play shogi-play">プレイ</a>
+        </div>
+      </div>
+    </div>
+
     <!-- Chess -->
     <div class="game-card chess">
       <div class="board-preview chess-preview">
@@ -246,6 +288,26 @@
   <footer>© 2026 Game Center</footer>
 
   <script>
+    // Shogi mini board (5 rows × 9 cols, showing ranks 1-5 from top)
+    const SB = [
+      [{p:'香',g:true},{p:'桂',g:true},{p:'銀',g:true},{p:'金',g:true},{p:'王',g:true},{p:'金',g:true},{p:'銀',g:true},{p:'桂',g:true},{p:'香',g:true}],
+      [{p:'',g:true}, {p:'飛',g:true},{p:'',g:true}, {p:'',g:true}, {p:'',g:true}, {p:'',g:true}, {p:'',g:true}, {p:'角',g:true},{p:'',g:true}],
+      [{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true},{p:'歩',g:true}],
+      [{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false}],
+      [{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'',g:false},{p:'と',g:false,pr:true},{p:'',g:false},{p:'龍',g:false,pr:true},{p:'',g:false},{p:'',g:false}],
+    ];
+    const sm = document.getElementById('shogi-mini');
+    SB.forEach(row => row.forEach(({p, g, pr}) => {
+      const sq = document.createElement('div'); sq.className = 's-sq';
+      if (p) {
+        const piece = document.createElement('div');
+        piece.className = 's-piece' + (g ? ' gote' : '') + (pr ? ' promoted' : '');
+        piece.textContent = p;
+        sq.appendChild(piece);
+      }
+      sm.appendChild(sq);
+    }));
+
     // Othello mini board (5 rows × 8 cols of a mid-game position)
     const OB = [
       [0,0,0,0,0,0,0,0],
